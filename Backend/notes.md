@@ -30,11 +30,12 @@ Those concerns belong in Convex.
 
 1. The web app creates and stores draft expenses in Convex.
 2. A receipt is uploaded and linked to an expense.
-3. A Convex action calls this FastAPI service.
-4. The service extracts normalized receipt data.
-5. Convex stores the OCR payload back on the expense for human review.
+3. Convex creates an `ocrRequests` record with `pending` status.
+4. A Convex action calls this FastAPI service using a JSON job payload.
+5. The service fetches the receipt from URL, extracts normalized receipt data, and returns status + payload.
+6. Convex updates request status and stores extracted summaries on the expense for human review.
 
-## Initial API contract
+## Current API contract
 
 ### `GET /health`
 
@@ -42,51 +43,55 @@ Returns service health.
 
 ### `POST /ocr/extract`
 
-Accepts one receipt input and returns a normalized OCR payload.
+Accepts one OCR job request and returns a normalized extraction response.
 
-Example request body:
+Request body:
 
 ```json
 {
+  "requestId": "ocr_req_123",
   "expenseId": "exp_123",
-  "receiptUrl": "https://example.com/receipt.jpg",
+  "receiptUrl": "https://storage.example.com/receipts/abc.pdf",
+  "mimeType": "application/pdf",
   "hints": {
-    "currencyCode": "INR",
+    "companyCurrency": "INR",
     "locale": "en-IN"
   }
 }
 ```
 
-Example response body:
+Response body:
 
 ```json
 {
+  "requestId": "ocr_req_123",
   "expenseId": "exp_123",
   "status": "completed",
+  "rawText": "...",
   "merchant": "Cafe Example",
   "amount": 845.5,
   "currencyCode": "INR",
   "expenseDate": "2026-03-29",
-  "rawText": "CAFE EXAMPLE ...",
   "lineItems": [],
-  "confidence": 0.74,
-  "warnings": [
-    "Low confidence on merchant name"
-  ]
+  "confidence": 0.81,
+  "warnings": [],
+  "providerMetadata": {
+    "provider": "paddleocr-local"
+  },
+  "errorMessage": null
 }
 ```
 
 ## Design guidance
 
-- Keep response fields normalized and app-facing.
-- Preserve raw OCR text for audit and debugging.
-- Return confidence and warnings so the UI can decide what to highlight.
+- Keep response fields stable and app-facing.
+- Preserve enough OCR detail for audit and debugging when the response contract is refined.
 - Prefer idempotent processing per expense/receipt input.
 - Add provider-specific adapters behind a service layer instead of leaking them into route handlers.
 
 ## Future extensions
 
-- asynchronous job mode for slow OCR providers
+- asynchronous callback job mode (`202 accepted` + callback endpoint) for slow OCR providers
 - duplicate receipt detection
 - receipt tampering heuristics
 - merchant/category enrichment
