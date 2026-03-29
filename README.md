@@ -1,51 +1,55 @@
-# Welcome to your Convex + Next.js + Clerk app
+# Reimbursement Management
 
-This is a [Convex](https://convex.dev/) project created with [`npm create convex`](https://www.npmjs.com/package/create-convex).
+Reimbursement Management is being built as a Convex-first web application with a narrow Python OCR service.
 
-After the initial setup (<2 minutes) you'll have a working full-stack app using:
+## Architecture
 
-- Convex as your backend (database, server logic)
-- [React](https://react.dev/) as your frontend (web page interactivity)
-- [Next.js](https://nextjs.org/) for optimized web hosting and page routing
-- [Tailwind](https://tailwindcss.com/) for building great looking accessible UI
-- [Clerk](https://clerk.com/) for authentication
+### Primary application stack
 
-## Get started
+- `Next.js` for the web app and route layer
+- `Clerk` for authentication
+- `Convex` for the primary backend, database, workflow logic, and realtime queries
 
-If you just cloned this codebase and didn't use `npm create convex`, run:
+### Supporting service
 
+- `FastAPI` for OCR and receipt-processing only
+
+Convex is the system of record for companies, users, expenses, approval rules, approvals, comments, notifications, and reporting views. The Python service should not own business entities or approval workflows.
+
+## Repository layout
+
+```text
+Frontend/   Next.js app + Convex backend functions
+Backend/    FastAPI OCR microservice
+PRD.md      Product requirements and product scope
 ```
-npm install
-npm run dev
-```
 
-If you're reading this README on GitHub and want to use this template, run:
+## Intended request flow
 
-```
-npm create convex@latest -- -t nextjs-clerk
-```
+1. A user signs in with Clerk.
+2. The app reads and mutates reimbursement data through Convex functions.
+3. Receipt uploads are attached to draft expenses.
+4. A Convex action calls the OCR service when extraction is needed.
+5. OCR output is written back to Convex and shown to the user for review.
+6. Expense submission and approval routing continue entirely in Convex.
 
-Then:
+## Why this split
 
-1. Open your app. There should be a "Claim your application" button from Clerk in the bottom right of your app.
-2. Follow the steps to claim your application and link it to this app.
-3. Follow step 3 in the [Convex Clerk onboarding guide](https://docs.convex.dev/auth/clerk#get-started) to create a Convex JWT template.
-4. Uncomment the Clerk provider in `convex/auth.config.ts`
-5. Paste the Issuer URL as `CLERK_JWT_ISSUER_DOMAIN` to your dev deployment environment variable settings on the Convex dashboard (see [docs](https://docs.convex.dev/auth/clerk#configuring-dev-and-prod-instances))
+- One source of truth for business data and workflow state
+- Realtime UI updates without building custom sync layers
+- Python kept for the one area where it is likely to matter most: OCR and document processing
+- Lower operational complexity than running a general-purpose REST backend beside Convex
 
-If you want to sync Clerk user data via webhooks, check out this [example repo](https://github.com/thomasballinger/convex-clerk-users-table/).
+## Current status
 
-## Learn more
+- `Frontend/` still contains starter Convex demo code and needs to be migrated to reimbursement-specific schema and screens.
+- `Backend/` is now reserved for the OCR microservice scaffold.
+- Planning docs were originally written for `FastAPI + PostgreSQL`; they should now be interpreted through the Convex-first architecture described here.
 
-To learn more about developing your project with Convex, check out:
+## Next implementation steps
 
-- The [Tour of Convex](https://docs.convex.dev/get-started) for a thorough introduction to Convex principles.
-- The rest of [Convex docs](https://docs.convex.dev/) to learn about all Convex features.
-- [Stack](https://stack.convex.dev/) for in-depth articles on advanced topics.
-
-## Join the community
-
-Join thousands of developers building full-stack apps with Convex:
-
-- Join the [Convex Discord community](https://convex.dev/community) to get help in real-time.
-- Follow [Convex on GitHub](https://github.com/get-convex/), star and contribute to the open-source implementation of Convex.
+1. Replace the sample Convex schema with reimbursement domain tables.
+2. Remove the sample `numbers` feature and starter UI.
+3. Add expense draft, receipt upload, and OCR review flows.
+4. Build approval rule management and approval inboxes in Convex.
+5. Expand the OCR service from scaffold to a real extraction pipeline.

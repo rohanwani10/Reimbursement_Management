@@ -3,7 +3,7 @@
 
 > **Version:** 1.0
 > **Status:** Draft
-> **Stack:** Python · FastAPI · PostgreSQL · React
+> **Stack:** Next.js · Clerk · Convex · FastAPI (OCR service only)
 > **Last Updated:** 2025-06-10
 
 ---
@@ -29,6 +29,16 @@
 ---
 
 ## 1. Problem Statement & Goals
+
+### 1.0 Architecture Note
+
+This PRD originally assumed a traditional `FastAPI + PostgreSQL` backend. The implementation direction for this repository is now:
+
+- `Convex` is the primary backend and system of record.
+- `FastAPI` is retained only as a dedicated OCR and receipt-processing microservice.
+- Authentication is handled through `Clerk`.
+
+The business requirements below still apply, but API and storage decisions should be translated into Convex functions and Convex-managed data wherever possible.
 
 ### 1.1 Problem Statement
 
