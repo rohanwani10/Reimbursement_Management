@@ -21,6 +21,7 @@ type OcrResult = {
   };
   raw: unknown;
   confidence: number;
+  error_message?: string;
 };
 
 export default function EmployeeDashboard() {
@@ -103,6 +104,8 @@ export default function EmployeeDashboard() {
         setOcrData(extraction);
         setSelectedExpenseId(null);
         setIsDrawerOpen(true);
+      } else {
+        alert(extraction.error_message || "OCR failed to extract details from this receipt.");
       }
     } catch (err) {
       console.error(err);

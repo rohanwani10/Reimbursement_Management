@@ -265,6 +265,34 @@ async function dispatchToOcrService(payload: OcrWorkerRequestPayload) {
   }
 }
 
+function getUserFacingOcrErrorMessage(error: unknown): string {
+  const fallback =
+    "OCR is temporarily unavailable. Please try again in a moment.";
+
+  if (!(error instanceof Error)) {
+    return fallback;
+  }
+
+  const message = error.message;
+  if (message.includes("OCR_SERVICE_URL is not configured")) {
+    return "OCR service is not configured for this environment.";
+  }
+
+  if (message.includes("AbortError")) {
+    return "OCR request timed out. Please try again.";
+  }
+
+  if (message.includes("Tunnel Unavailable") || message.includes("returned 503")) {
+    return "OCR service tunnel is unavailable. Restart the public tunnel and retry.";
+  }
+
+  if (message.includes("fetch failed") || message.includes("ECONNREFUSED")) {
+    return "OCR service is unreachable right now. Please verify service connectivity and retry.";
+  }
+
+  return fallback;
+}
+
 export const generateUploadUrl = mutation({
   args: {},
   handler: async (ctx) => {
@@ -295,7 +323,27 @@ export const processReceipt = action({
       },
     };
 
-    const { rawResponse, normalized } = await dispatchToOcrService(requestPayload);
+    let dispatched:
+      | {
+          rawResponse: unknown;
+          normalized: OcrWorkerNormalizedResult;
+        }
+      | undefined;
+
+    try {
+      dispatched = await dispatchToOcrService(requestPayload);
+    } catch (error) {
+      return {
+        success: false,
+        receipt_url: url,
+        extracted: {},
+        raw: null,
+        confidence: 0,
+        error_message: getUserFacingOcrErrorMessage(error),
+      };
+    }
+
+    const { rawResponse, normalized } = dispatched;
 
     if (normalized.status === "failed") {
       return {
@@ -304,6 +352,10 @@ export const processReceipt = action({
         extracted: {},
         raw: rawResponse,
         confidence: normalized.confidence,
+        error_message:
+          normalized.errorMessage ??
+          (normalized.warnings.join("; ") ||
+            "OCR service failed to extract receipt details."),
       };
     }
 
