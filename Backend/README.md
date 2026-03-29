@@ -4,9 +4,10 @@ This service exists only for OCR and receipt-processing work.
 
 ## Scope
 
-- Accept a receipt input from the main app
-- Extract normalized receipt fields
-- Return OCR output to Convex for storage and review
+- Accept a job-style OCR request payload from Convex
+- Fetch receipt content from durable URL storage
+- Extract and normalize receipt fields with PaddleOCR
+- Return normalized OCR output and provider metadata to Convex
 
 ## Non-scope
 
@@ -21,6 +22,16 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-## Planned integration
+## Current API
 
-The main app should call this service from a Convex action, then persist the returned OCR payload on the expense record.
+- `GET /health`
+  - returns service health and OCR provider metadata
+
+- `POST /ocr/extract`
+  - accepts `application/json`
+  - request body includes `requestId`, `expenseId`, `receiptUrl`, `mimeType`, `hints`
+  - returns normalized extraction contract with `status = completed | failed`
+
+## Integration note
+
+Convex should call this service from an action, persist request state on `ocrRequests`, and store only reviewable extracted summaries on the expense record.

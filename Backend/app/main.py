@@ -1,13 +1,16 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import shutil
-import os
-import uuid
-from ocr_engine import process_receipt
 
-app = FastAPI()
+from app.config import settings
+from app.schemas import OCRExtractRequest, OCRExtractResponse
+from app.services.ocr import extract_receipt
 
-# CORS
+app = FastAPI(
+    title="Reimbursement OCR Service",
+    version="0.2.0",
+    description="Asynchronous-style OCR worker service with a JSON job contract.",
+)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -16,34 +19,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-UPLOAD_FOLDER = "uploads"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-ALLOWED_TYPES = ["image/png", "image/jpeg", "application/pdf"]
+@app.get("/health")
+async def health() -> dict[str, str]:
+    return {
+        "status": "ok",
+        "service": settings.app_name,
+        "environment": settings.app_env,
+        "provider": settings.ocr_provider,
+    }
 
 
-@app.post("/upload/")
-async def upload_file(file: UploadFile = File(...)):
-    # Validate file type
-    if file.content_type not in ALLOWED_TYPES:
-        raise HTTPException(status_code=400, detail="Invalid file type")
-
-    # Unique filename
-    file_ext = file.filename.split(".")[-1]
-    file_path = os.path.join(UPLOAD_FOLDER, f"{uuid.uuid4()}.{file_ext}")
-
-    try:
-        # Save file
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-
-        # OCR Processing
-        result = process_receipt(file_path)
-
-        return {"data": result}
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-    finally:
-        file.file.close()
+@app.post("/ocr/extract", response_model=OCRExtractResponse)
+async def ocr_extract(payload: OCRExtractRequest) -> OCRExtractResponse:
+    return await extract_receipt(payload)
