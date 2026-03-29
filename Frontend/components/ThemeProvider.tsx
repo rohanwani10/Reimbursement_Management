@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 type Theme = "dark" | "light" | "system";
 
@@ -15,48 +15,58 @@ const ThemeContext = createContext<ThemeProviderState | undefined>(undefined);
 export function ThemeProvider({
   children,
   defaultTheme = "system",
-  ...props
+  attribute = "class",
+  enableSystem = true,
 }: {
   children: React.ReactNode;
-  defaultTheme?: string;
-  [key: string]: any;
+  defaultTheme?: Theme;
+  attribute?: "class" | "data-theme";
+  enableSystem?: boolean;
 }) {
-  const [theme, setThemeState] = useState<Theme>(defaultTheme as Theme);
-  const [resolvedTheme, setResolvedTheme] = useState<"dark" | "light">("light");
+  const [theme, setThemeState] = useState<Theme>(() => {
+    if (typeof window === "undefined") {
+      return defaultTheme;
+    }
 
-  useEffect(() => {
     try {
       const savedTheme = localStorage.getItem("app-theme") as Theme | null;
-      if (savedTheme) {
-        setThemeState(savedTheme);
+      if (savedTheme === "light" || savedTheme === "dark" || savedTheme === "system") {
+        return savedTheme;
       }
     } catch {}
-  }, []);
+
+    return defaultTheme;
+  });
+
+  const resolvedTheme = useMemo<"dark" | "light">(() => {
+    if (theme === "system") {
+      if (!enableSystem) {
+        return "light";
+      }
+      if (typeof window !== "undefined") {
+        return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+      return "light";
+    }
+    return theme;
+  }, [theme, enableSystem]);
 
   useEffect(() => {
     const root = window.document.documentElement;
-    root.classList.remove("light", "dark");
-    
-    let currentResolved: "light" | "dark" = "light";
-    
-    if (theme === "system") {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? "dark"
-        : "light";
-      currentResolved = systemTheme;
-      root.classList.add(systemTheme);
+
+    if (attribute === "class") {
+      root.classList.remove("light", "dark");
+      root.classList.add(resolvedTheme);
     } else {
-      currentResolved = theme;
-      root.classList.add(theme);
+      root.setAttribute(attribute, resolvedTheme);
     }
-    
-    setResolvedTheme(currentResolved);
+
     try {
       if (theme !== defaultTheme) {
         localStorage.setItem("app-theme", theme);
       }
     } catch {}
-  }, [theme, defaultTheme]);
+  }, [theme, defaultTheme, resolvedTheme, attribute]);
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme: setThemeState, resolvedTheme }}>
