@@ -1,36 +1,65 @@
-import re
 import os
+import re
+from typing import Any
+
 import cv2
 import numpy as np
 import requests
 from paddleocr import PaddleOCR
-from pdf2image import convert_from_path
+from pdf2image import convert_from_bytes, convert_from_path
 
-POPPLER_PATH = r"./poppler-23.11.0/Library/bin"
+# Optional on Linux if poppler is in PATH; required on Windows when bundled.
+POPPLER_PATH = os.getenv("OCR_POPPLER_PATH")
 
-ocr = PaddleOCR(use_angle_cls=True, lang='en', use_gpu=False)
+ocr = PaddleOCR(use_angle_cls=True, lang="en", use_gpu=False)
+
+
+def _poppler_kwargs() -> dict[str, str]:
+    if POPPLER_PATH:
+        return {"poppler_path": POPPLER_PATH}
+    return {}
 
 # -------------------------------
 # LOAD INPUT
 # -------------------------------
-def load_input(file_path):
+def load_input(file_path: str) -> list[np.ndarray]:
     ext = os.path.splitext(file_path)[1].lower()
 
     if ext == ".pdf":
-        pages = convert_from_path(file_path, dpi=300, poppler_path=POPPLER_PATH)
+        pages = convert_from_path(file_path, dpi=300, **_poppler_kwargs())
         return [np.array(p) for p in pages]
 
-    elif ext in [".png", ".jpg", ".jpeg"]:
-        return [cv2.imread(file_path)]
+    elif ext in [".png", ".jpg", ".jpeg", ".webp"]:
+        image = cv2.imread(file_path)
+        if image is None:
+            raise ValueError("Could not decode image from file path")
+        return [image]
 
     else:
         raise ValueError("Unsupported file")
 
 
+def load_input_bytes(file_bytes: bytes, mime_type: str) -> list[np.ndarray]:
+    mime = mime_type.lower().strip()
+
+    if mime == "application/pdf":
+        pages = convert_from_bytes(file_bytes, dpi=300, **_poppler_kwargs())
+        return [np.array(p) for p in pages]
+
+    if mime in ["image/png", "image/jpeg", "image/jpg", "image/webp"]:
+        image_array = np.frombuffer(file_bytes, dtype=np.uint8)
+        image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+        if image is None:
+            raise ValueError("Could not decode image from bytes")
+        return [image]
+
+    raise ValueError(f"Unsupported mime type: {mime_type}")
+
+
 # -------------------------------
 # PREPROCESS
 # -------------------------------
-def preprocess(img):
+def preprocess(img: np.ndarray) -> np.ndarray:
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     gray = cv2.resize(gray, None, fx=1.5, fy=1.5)
 
@@ -44,12 +73,12 @@ def preprocess(img):
 # -------------------------------
 # OCR WITH BOXES
 # -------------------------------
-def extract_with_boxes(img):
+def extract_with_boxes(img: np.ndarray) -> list[dict[str, Any]]:
     result = ocr.ocr(img, cls=True)
     data = []
 
-    for line in result:
-        for word in line:
+    for line in result or []:
+        for word in line or []:
             box = word[0]
             text = word[1][0]
             x = int(box[0][0])
@@ -63,7 +92,7 @@ def extract_with_boxes(img):
 # -------------------------------
 # GROUP ROWS
 # -------------------------------
-def group_rows(data, threshold=15):
+def group_rows(data: list[dict[str, Any]], threshold: int = 15) -> list[list[dict[str, Any]]]:
     rows = []
 
     for item in data:
@@ -88,7 +117,7 @@ def group_rows(data, threshold=15):
 # -------------------------------
 # HEADER
 # -------------------------------
-def extract_header(rows):
+def extract_header(rows: list[list[dict[str, Any]]]) -> tuple[str | None, str | None]:
     merchant = rows[0][0]["text"] if rows else None
 
     date = None
@@ -104,7 +133,7 @@ def extract_header(rows):
 # -------------------------------
 # TOTAL
 # -------------------------------
-def extract_total(rows):
+def extract_total(rows: list[list[dict[str, Any]]]) -> float | None:
     for row in rows:
         text = " ".join([c["text"] for c in row]).lower()
         if "total" in text:
@@ -118,7 +147,7 @@ def extract_total(rows):
 # -------------------------------
 # TAX
 # -------------------------------
-def extract_tax(rows):
+def extract_tax(rows: list[list[dict[str, Any]]]) -> dict[str, float | None]:
     cgst = None
     sgst = None
     total_tax = None
@@ -141,17 +170,13 @@ def extract_tax(rows):
             if nums:
                 total_tax = float(nums[-1])
 
-    return {
-        "cgst": cgst,
-        "sgst": sgst,
-        "total_tax": total_tax
-    }
+    return {"cgst": cgst, "sgst": sgst, "total_tax": total_tax}
 
 
 # -------------------------------
 # ITEMS
 # -------------------------------
-def extract_items(rows):
+def extract_items(rows: list[list[dict[str, Any]]]) -> list[dict[str, Any]]:
     items = []
 
     # ----------- TRY TABLE FORMAT FIRST -----------
@@ -174,12 +199,8 @@ def extract_items(rows):
                 name = texts[1]
                 amount = float(texts[-1])
 
-                items.append({
-                    "name": name,
-                    "qty": qty,
-                    "price": amount
-                })
-            except:
+                items.append({"name": name, "qty": qty, "price": amount})
+            except Exception:
                 continue
 
     # ----------- FALLBACK: LINE-BASED PARSING -----------
@@ -199,11 +220,7 @@ def extract_items(rows):
                 if any(word in name.lower() for word in ["total", "tax", "subtotal"]):
                     continue
 
-                items.append({
-                    "name": name,
-                    "qty": 1,
-                    "price": price
-                })
+                items.append({"name": name, "qty": 1, "price": price})
 
     return items
 
@@ -211,9 +228,9 @@ def extract_items(rows):
 # -------------------------------
 # COUNTRY + CURRENCY API
 # -------------------------------
-country_currency_cache = {}
+country_currency_cache: dict[str, str] = {}
 
-def load_country_currency():
+def load_country_currency() -> dict[str, str]:
     global country_currency_cache
 
     if country_currency_cache:
@@ -231,13 +248,13 @@ def load_country_currency():
                 code = list(currencies.keys())[0]
                 country_currency_cache[name] = code
 
-    except:
+    except Exception:
         pass
 
     return country_currency_cache
 
 
-def detect_country(text_data):
+def detect_country(text_data: list[dict[str, Any]]) -> str | None:
     text = " ".join([d["text"] for d in text_data]).lower()
     country_map = load_country_currency()
 
@@ -248,7 +265,7 @@ def detect_country(text_data):
     return None
 
 
-def detect_currency_symbol(text_data):
+def detect_currency_symbol(text_data: list[dict[str, Any]]) -> str | None:
     text = " ".join([d["text"] for d in text_data])
 
     if "₹" in text:
@@ -263,7 +280,7 @@ def detect_currency_symbol(text_data):
     return None
 
 
-def get_currency(country, text_data):
+def get_currency(country: str | None, text_data: list[dict[str, Any]]) -> str:
     country_map = load_country_currency()
 
     if country and country in country_map:
@@ -275,7 +292,9 @@ def get_currency(country, text_data):
 # -------------------------------
 # CURRENCY CONVERSION
 # -------------------------------
-def convert_currency(amount, from_currency, to_currency="INR"):
+def convert_currency(
+    amount: float | None, from_currency: str, to_currency: str = "INR"
+) -> float | None:
     if not amount or from_currency == to_currency:
         return amount
 
@@ -287,7 +306,7 @@ def convert_currency(amount, from_currency, to_currency="INR"):
         if rate:
             return round(amount * rate, 2)
 
-    except:
+    except Exception:
         pass
 
     return amount
@@ -296,7 +315,7 @@ def convert_currency(amount, from_currency, to_currency="INR"):
 # -------------------------------
 # CATEGORY + DESCRIPTION
 # -------------------------------
-def detect_category(merchant, items):
+def detect_category(merchant: str, items: list[dict[str, Any]]) -> str:
     text = (merchant + " " + " ".join([i["name"] for i in items])).lower()
 
     if any(w in text for w in ["cafe", "restaurant", "food", "coffee"]):
@@ -305,46 +324,91 @@ def detect_category(merchant, items):
     return "Other"
 
 
-def generate_description(merchant):
+def generate_description(merchant: str) -> str:
     return f"Expense at {merchant}"
+
+
+def _summarize_page(img: np.ndarray) -> dict[str, Any]:
+    processed = preprocess(img)
+    data = extract_with_boxes(processed)
+    rows = group_rows(data)
+
+    merchant, receipt_date = extract_header(rows)
+    total = extract_total(rows)
+    items = extract_items(rows)
+    tax = extract_tax(rows)
+
+    country = detect_country(data)
+    currency = get_currency(country, data)
+    converted_total = convert_currency(total, currency)
+
+    category = detect_category(merchant or "", items)
+    description = generate_description(merchant or "Unknown")
+    raw_text = "\n".join(" ".join(cell["text"] for cell in row) for row in rows)
+
+    return {
+        "merchant": merchant or "N/A",
+        "date": receipt_date or "N/A",
+        "total": total or 0,
+        "converted_total": converted_total or 0,
+        "currency": currency or "INR",
+        "country": country or "Unknown",
+        "category": category or "Other",
+        "description": description,
+        "tax": tax or {"cgst": 0, "sgst": 0},
+        "items": items or [],
+        "raw_text": raw_text,
+    }
 
 
 # -------------------------------
 # MAIN
 # -------------------------------
-def process_receipt(file_path):
+def process_receipt(file_path: str) -> list[dict[str, Any]]:
     images = load_input(file_path)
-    results = []
+    results: list[dict[str, Any]] = []
 
     for img in images:
-        img = preprocess(img)
-
-        data = extract_with_boxes(img)
-        rows = group_rows(data)
-
-        merchant, date = extract_header(rows)
-        total = extract_total(rows)
-        items = extract_items(rows)
-        tax = extract_tax(rows)
-
-        country = detect_country(data)
-        currency = get_currency(country, data)
-        converted_total = convert_currency(total, currency)
-
-        category = detect_category(merchant, items)
-        description = generate_description(merchant)
-
-        results.append({
-            "merchant": merchant or "N/A",
-            "date": date or "N/A",
-            "total": total or 0,
-            "converted_total": converted_total or 0,
-            "currency": currency or "INR",
-            "country": country or "Unknown",
-            "category": category or "Other",
-            "description": description or "",
-            "tax": tax or {"cgst": 0, "sgst": 0},
-            "items": items or []
-        })
+        results.append(_summarize_page(img))
 
     return results
+
+
+def process_receipt_bytes(file_bytes: bytes, mime_type: str) -> dict[str, Any]:
+    images = load_input_bytes(file_bytes, mime_type)
+    if not images:
+        raise ValueError("No pages found in receipt payload")
+
+    page_results = [_summarize_page(img) for img in images]
+    primary = page_results[0]
+
+    line_items: list[dict[str, Any]] = []
+    raw_text_parts: list[str] = []
+    for page in page_results:
+        raw_text_parts.append(page.get("raw_text", ""))
+        for item in page.get("items", []):
+            line_items.append(
+                {
+                    "description": item.get("name", "").strip(),
+                    "amount": item.get("price"),
+                    "quantity": item.get("qty"),
+                }
+            )
+
+    return {
+        "merchant": None if primary["merchant"] == "N/A" else primary["merchant"],
+        "amount": float(primary["total"]) if primary["total"] else None,
+        "currencyCode": primary["currency"],
+        "expenseDate": None if primary["date"] == "N/A" else primary["date"],
+        "rawText": "\n\n".join(part for part in raw_text_parts if part),
+        "lineItems": [
+            item for item in line_items if item["description"]
+        ],
+        "warnings": [] if line_items else ["No line items extracted"],
+        "confidence": 0.7,
+        "providerMetadata": {
+            "pagesProcessed": len(page_results),
+            "country": primary["country"],
+            "category": primary["category"],
+        },
+    }
