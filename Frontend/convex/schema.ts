@@ -59,6 +59,7 @@ export default defineSchema({
       v.literal("rejected")
     ),
     receipt_url: v.optional(v.string()),
+    ocr_request_id: v.optional(v.id("ocr_requests")),
     ocr_data: v.optional(
       v.object({
         extracted: v.any(),
@@ -98,4 +99,28 @@ export default defineSchema({
     metadata: v.optional(v.any()), // Contextual data
     created_at: v.optional(v.number()), // Specific timestamp, though Convex has _creationTime
   }).index("by_entity", ["entity_type", "entity_id"]),
+
+  ocr_requests: defineTable({
+    company_id: v.id("companies"),
+    expense_id: v.id("expenses"),
+    requested_by_id: v.id("users"),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("processing"),
+      v.literal("completed"),
+      v.literal("failed")
+    ),
+    request_payload: v.any(),
+    response_payload: v.optional(v.any()),
+    error_message: v.optional(v.string()),
+    provider: v.string(),
+    attempt_count: v.number(),
+    requested_at: v.number(),
+    started_at: v.optional(v.number()),
+    completed_at: v.optional(v.number()),
+    updated_at: v.number(),
+  })
+    .index("by_expense", ["expense_id"])
+    .index("by_status", ["status"])
+    .index("by_expense_and_status", ["expense_id", "status"]),
 });

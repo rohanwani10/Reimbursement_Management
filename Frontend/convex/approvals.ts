@@ -5,6 +5,7 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import { QUERY_HARD_LIMIT } from "./constants";
 import { requireActor, requireAdmin } from "./security/auth";
+import { assertCanViewApprovalChain as assertCanViewApprovalChainAccess } from "./security/access";
 import { fail } from "./security/errors";
 
 type AnyCtx = QueryCtx | MutationCtx;
@@ -59,7 +60,7 @@ async function getAllSteps(ctx: AnyCtx, expenseId: Id<"expenses">) {
   return steps.sort((a, b) => a.step_order - b.step_order);
 }
 
-function getCurrentPendingOrder(
+export function getCurrentPendingOrder(
   steps: Array<Doc<"expense_approvals">>
 ): number | null {
   const pendingOrders = steps
@@ -73,21 +74,19 @@ function getCurrentPendingOrder(
   return Math.min(...pendingOrders);
 }
 
-function assertCanViewApprovalChain(
+export function assertCanViewApprovalChain(
   actor: Doc<"users">,
   expense: Doc<"expenses">,
   steps: Array<Doc<"expense_approvals">>
 ) {
-  if (actor.role === "admin") {
-    return;
-  }
-
   const isExpenseOwner = expense.user_id === actor._id;
   const isApprover = steps.some((step) => step.user_id === actor._id);
 
-  if (!isExpenseOwner && !isApprover) {
-    fail("FORBIDDEN", "You do not have permission to view this approval chain.");
-  }
+  assertCanViewApprovalChainAccess({
+    actorRole: actor.role,
+    isExpenseOwner,
+    isApprover,
+  });
 }
 
 async function skipRemainingPending(

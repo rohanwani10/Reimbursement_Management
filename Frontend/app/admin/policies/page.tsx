@@ -8,11 +8,11 @@ import { Id } from "@/convex/_generated/dataModel";
 export default function ApprovalPoliciesSetup() {
   const currentUser = useQuery(api.auth.current);
   const users = useQuery(api.users.getUsers, currentUser ? {} : "skip");
-  const rules = useQuery(api.rules.getRules, currentUser ? {} : "skip");
+  const rules = useQuery(api.approvalRules.getRules, currentUser ? {} : "skip");
 
-  const createRule = useMutation(api.rules.createRule);
-  const updateRule = useMutation(api.rules.updateRule);
-  const deleteRule = useMutation(api.rules.deleteRule);
+  const createRule = useMutation(api.approvalRules.createRule);
+  const updateRule = useMutation(api.approvalRules.updateRule);
+  const deleteRule = useMutation(api.approvalRules.deleteRule);
 
   const [isAdding, setIsAdding]       = useState(false);
   const [editingRuleId, setEditingRuleId] = useState<Id<"approval_rules"> | null>(null);

@@ -3,6 +3,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import { requireActor, requireAdminRole } from "./security/auth";
+import { canMutateDraftExpense } from "./security/access";
 import { fail } from "./security/errors";
 
 type ExpenseStatus = "draft" | "pending" | "approved" | "rejected";
@@ -196,9 +197,24 @@ async function getExpenseInActorCompany(
   return expense;
 }
 
-function assertExpenseOwner(actor: Doc<"users">, expense: Doc<"expenses">): void {
+export function assertExpenseOwner(actor: Doc<"users">, expense: Doc<"expenses">): void {
   if (expense.user_id !== actor._id) {
     fail("FORBIDDEN", "You can only modify your own expenses.");
+  }
+}
+
+function assertCanMutateDraftExpense(actor: Doc<"users">, expense: Doc<"expenses">) {
+  if (
+    !canMutateDraftExpense({
+      actorId: actor._id,
+      ownerId: expense.user_id,
+      status: expense.status,
+    })
+  ) {
+    if (expense.user_id !== actor._id) {
+      fail("FORBIDDEN", "You can only modify your own expenses.");
+    }
+    fail("INVALID_STATE", "Only draft expenses can be modified.");
   }
 }
 
@@ -484,11 +500,7 @@ export const updateDraftExpense = mutation({
     const actor = await requireActor(ctx);
     const expense = await getExpenseInActorCompany(ctx, actor, args.expense_id);
 
-    assertExpenseOwner(actor, expense);
-
-    if (expense.status !== "draft") {
-      fail("INVALID_STATE", "Only draft expenses can be updated.");
-    }
+    assertCanMutateDraftExpense(actor, expense);
 
     const patch = buildDraftPatch(args.updates);
     if (Object.keys(patch).length === 0) {
@@ -506,11 +518,7 @@ export const deleteDraftExpense = mutation({
     const actor = await requireActor(ctx);
     const expense = await getExpenseInActorCompany(ctx, actor, args.expense_id);
 
-    assertExpenseOwner(actor, expense);
-
-    if (expense.status !== "draft") {
-      fail("INVALID_STATE", "Only draft expenses can be deleted.");
-    }
+    assertCanMutateDraftExpense(actor, expense);
 
     await clearApprovalsForExpense(ctx, args.expense_id);
     await ctx.db.delete(args.expense_id);
@@ -524,11 +532,7 @@ export const submitDraftExpense = mutation({
     const actor = await requireActor(ctx);
     const expense = await getExpenseInActorCompany(ctx, actor, args.expense_id);
 
-    assertExpenseOwner(actor, expense);
-
-    if (expense.status !== "draft") {
-      fail("INVALID_STATE", "Expense is not in draft status.");
-    }
+    assertCanMutateDraftExpense(actor, expense);
 
     await ctx.db.patch(args.expense_id, {
       status: "pending",

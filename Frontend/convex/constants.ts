@@ -8,6 +8,13 @@ export const EXPENSE_STATUSES = ["draft", "pending", "approved", "rejected"] as 
 
 export const APPROVAL_STATUSES = ["pending", "approved", "rejected", "skipped"] as const;
 
+export const OCR_REQUEST_STATUSES = [
+  "pending",
+  "processing",
+  "completed",
+  "failed",
+] as const;
+
 export const ERROR_CODES = [
   "UNAUTHORIZED",
   "FORBIDDEN",

@@ -60,6 +60,7 @@ psutil==7.2.2
 pyclipper==1.4.0
 pycryptodome==3.23.0
 pydantic==2.12.5
+pydantic-settings==2.13.1
 pydantic_core==2.41.5
 PyMuPDF==1.27.2.2
 pyparsing==3.3.2
@@ -73,6 +74,7 @@ rarfile==4.2
 requests==2.33.0
 scikit-image==0.25.2
 scipy==1.15.3
+setuptools==75.1.0
 shapely==2.1.2
 six==1.17.0
 soupsieve==2.8.3

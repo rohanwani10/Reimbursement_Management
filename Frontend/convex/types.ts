@@ -3,6 +3,7 @@ import type {
   APPROVAL_MODES,
   ERROR_CODES,
   EXPENSE_STATUSES,
+  OCR_REQUEST_STATUSES,
   RULE_CONDITION_TYPES,
   USER_ROLES,
 } from "./constants";
@@ -11,6 +12,7 @@ export type UserRole = (typeof USER_ROLES)[number];
 export type RuleConditionType = (typeof RULE_CONDITION_TYPES)[number];
 export type ApprovalMode = (typeof APPROVAL_MODES)[number];
 export type ExpenseStatus = (typeof EXPENSE_STATUSES)[number];
+export type OcrRequestStatus = (typeof OCR_REQUEST_STATUSES)[number];
 export type AppErrorCode = (typeof ERROR_CODES)[number];
 
 export type ActorContext = {
