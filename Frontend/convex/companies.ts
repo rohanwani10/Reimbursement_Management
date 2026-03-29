@@ -107,6 +107,24 @@ export const bootstrapCurrentSession = mutation({
       updatedAt: now,
     });
 
+    // Recheck identity mapping before inserting user to keep bootstrap idempotent
+    // under retries and concurrent invocations.
+    const existingAfterCompanyInsert = await findUserByClerkUserId(
+      ctx,
+      identity.tokenIdentifier,
+    );
+    if (existingAfterCompanyInsert) {
+      await ctx.db.delete(companyId);
+      const company = await ctx.db.get(existingAfterCompanyInsert.companyId);
+      assertOrFail(company, "NOT_FOUND", "Provisioned company could not be found.");
+      return {
+        created: false,
+        companyId: company._id,
+        userId: existingAfterCompanyInsert._id,
+        role: existingAfterCompanyInsert.role,
+      };
+    }
+
     const userId = await ctx.db.insert("users", {
       companyId,
       clerkUserId: identity.tokenIdentifier,
@@ -119,6 +137,13 @@ export const bootstrapCurrentSession = mutation({
       updatedAt: now,
       deactivatedAt: null,
     });
+
+    const userInvariantCheck = await findUserByClerkUserId(ctx, identity.tokenIdentifier);
+    assertOrFail(
+      userInvariantCheck,
+      "CONFLICT",
+      "Bootstrap failed identity uniqueness invariant check.",
+    );
 
     await ctx.db.patch(companyId, {
       createdByUserId: userId,

@@ -7,6 +7,7 @@ import { QUERY_HARD_LIMIT } from "./constants";
 import { logActivity } from "./lib/activity";
 import { assertOrFail, fail } from "./lib/errors";
 import { requireRole, requireSameCompany } from "./lib/rbac";
+import { assertSupportedRuleSemantics } from "./lib/ruleSemantics";
 import { resolveMatchingRule } from "./ruleEngine";
 
 type RuleConditionType = "all" | "percentage" | "specific" | "hybrid";
@@ -199,6 +200,7 @@ export const createRule = mutation({
     const isActive = args.isActive ?? true;
     const priority = args.priority ?? null;
 
+    assertSupportedRuleSemantics(args.mode, args.conditionType);
     validateCondition(args.conditionType, requiredPercentage, specificApproverId);
     await validateSpecificApprover(ctx, actor.company._id, specificApproverId, isActive);
     await validateApprovers(ctx, actor.company._id, args.approverIds, isActive);
@@ -295,6 +297,9 @@ export const updateRule = mutation({
         : rule.allowAdminFallback;
     const nextApproverIds = args.approverIds;
 
+    const nextMode = args.mode ?? rule.mode;
+
+    assertSupportedRuleSemantics(nextMode, nextConditionType);
     validateCondition(
       nextConditionType,
       nextRequiredPercentage,
@@ -333,7 +338,7 @@ export const updateRule = mutation({
       conditionType: nextConditionType,
       requiredPercentage: nextRequiredPercentage,
       specificApproverId: nextSpecificApproverId,
-      mode: args.mode ?? rule.mode,
+      mode: nextMode,
       includeManagerApprover:
         args.includeManagerApprover ?? rule.includeManagerApprover,
       allowAdminFallback: nextAllowAdminFallback,
@@ -383,6 +388,7 @@ export const setRuleActive = mutation({
       .take(QUERY_HARD_LIMIT);
 
     if (args.isActive) {
+      assertSupportedRuleSemantics(rule.mode, rule.conditionType);
       for (const entry of approvers) {
         const approver = await ctx.db.get(entry.approverId);
         if (!approver || approver.companyId !== actor.company._id || approver.status !== "active") {

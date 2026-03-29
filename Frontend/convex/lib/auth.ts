@@ -19,10 +19,18 @@ export async function findUserByClerkUserId(
   ctx: AuthContext,
   clerkUserId: string,
 ) {
-  return await ctx.db
+  const users = await ctx.db
     .query("users")
     .withIndex("by_clerkUserId", (q) => q.eq("clerkUserId", clerkUserId))
-    .unique();
+    .take(2);
+
+  if (users.length > 1) {
+    fail("CONFLICT", "Multiple users found for the same authenticated identity.", {
+      clerkUserId,
+    });
+  }
+
+  return users[0] ?? null;
 }
 
 export async function requireAuth(ctx: AuthContext) {
