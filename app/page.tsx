@@ -1,166 +1,173 @@
 "use client";
 
-import {
-  Authenticated,
-  Unauthenticated,
-  useMutation,
-  useQuery,
-} from "convex/react";
-import { api } from "../convex/_generated/api";
+import { Authenticated, Unauthenticated } from "convex/react";
 import Link from "next/link";
-import { SignUpButton } from "@clerk/nextjs";
-import { SignInButton } from "@clerk/nextjs";
-import { UserButton } from "@clerk/nextjs";
+import { SignUpButton, SignInButton, UserButton } from "@clerk/nextjs";
 
 export default function Home() {
   return (
-    <>
-      <header className="sticky top-0 z-10 bg-background p-4 border-b-2 border-slate-200 dark:border-slate-800 flex flex-row justify-between items-center">
-        Convex + Next.js + Clerk
-        <UserButton />
-      </header>
-      <main className="p-8 flex flex-col gap-8">
-        <h1 className="text-4xl font-bold text-center">
-          Convex + Next.js + Clerk
-        </h1>
-        <Authenticated>
-          <Content />
-        </Authenticated>
-        <Unauthenticated>
-          <SignInForm />
-        </Unauthenticated>
-      </main>
-    </>
-  );
-}
-
-function SignInForm() {
-  return (
-    <div className="flex flex-col gap-8 w-96 mx-auto">
-      <p>Log in to see the numbers</p>
-      <SignInButton mode="modal">
-        <button className="bg-foreground text-background px-4 py-2 rounded-md">
-          Sign in
-        </button>
-      </SignInButton>
-      <SignUpButton mode="modal">
-        <button className="bg-foreground text-background px-4 py-2 rounded-md">
-          Sign up
-        </button>
-      </SignUpButton>
-    </div>
-  );
-}
-
-function Content() {
-  const { viewer, numbers } =
-    useQuery(api.myFunctions.listNumbers, {
-      count: 10,
-    }) ?? {};
-  const addNumber = useMutation(api.myFunctions.addNumber);
-
-  if (viewer === undefined || numbers === undefined) {
-    return (
-      <div className="mx-auto">
-        <p>loading... (consider a loading skeleton)</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col gap-8 max-w-lg mx-auto">
-      <p>Welcome {viewer ?? "Anonymous"}!</p>
-      <p>
-        Click the button below and open this page in another window - this data
-        is persisted in the Convex cloud database!
-      </p>
-      <p>
-        <button
-          className="bg-foreground text-background text-sm px-4 py-2 rounded-md"
-          onClick={() => {
-            void addNumber({ value: Math.floor(Math.random() * 10) });
-          }}
-        >
-          Add a random number
-        </button>
-      </p>
-      <p>
-        Numbers:{" "}
-        {numbers?.length === 0
-          ? "Click the button!"
-          : (numbers?.join(", ") ?? "...")}
-      </p>
-      <p>
-        Edit{" "}
-        <code className="text-sm font-bold font-mono bg-slate-200 dark:bg-slate-800 px-1 py-0.5 rounded-md">
-          convex/myFunctions.ts
-        </code>{" "}
-        to change your backend
-      </p>
-      <p>
-        Edit{" "}
-        <code className="text-sm font-bold font-mono bg-slate-200 dark:bg-slate-800 px-1 py-0.5 rounded-md">
-          app/page.tsx
-        </code>{" "}
-        to change your frontend
-      </p>
-      <p>
-        See the{" "}
-        <Link href="/server" className="underline hover:no-underline">
-          /server route
-        </Link>{" "}
-        for an example of loading data in a server component
-      </p>
-      <div className="flex flex-col">
-        <p className="text-lg font-bold">Useful resources:</p>
-        <div className="flex gap-2">
-          <div className="flex flex-col gap-2 w-1/2">
-            <ResourceCard
-              title="Convex docs"
-              description="Read comprehensive documentation for all Convex features."
-              href="https://docs.convex.dev/home"
-            />
-            <ResourceCard
-              title="Stack articles"
-              description="Learn about best practices, use cases, and more from a growing
-            collection of articles, videos, and walkthroughs."
-              href="https://www.typescriptlang.org/docs/handbook/2/basic-types.html"
-            />
+    <div
+      className="mac-fade-in"
+      style={{ minHeight: "100vh", background: "var(--mac-bg)", display: "flex", flexDirection: "column" }}
+    >
+      {/* ── Toolbar ───────────────────────────────────────── */}
+      <header
+        className="mac-glass"
+        style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 50,
+          borderBottom: "1px solid var(--mac-border)",
+          height: 52,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "0 24px",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {/* Traffic-light deco */}
+          <div style={{ display: "flex", gap: 6, marginRight: 4 }}>
+            <span style={{ width: 12, height: 12, borderRadius: "50%", background: "#ff5f57", display: "block" }} />
+            <span style={{ width: 12, height: 12, borderRadius: "50%", background: "#febc2e", display: "block" }} />
+            <span style={{ width: 12, height: 12, borderRadius: "50%", background: "#28c840", display: "block" }} />
           </div>
-          <div className="flex flex-col gap-2 w-1/2">
-            <ResourceCard
-              title="Templates"
-              description="Browse our collection of templates to get started quickly."
-              href="https://www.convex.dev/templates"
-            />
-            <ResourceCard
-              title="Discord"
-              description="Join our developer community to ask questions, trade tips & tricks,
-            and show off your projects."
-              href="https://www.convex.dev/community"
-            />
+          <div
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 8,
+              background: "var(--mac-accent)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+              <path d="M5 10h10M10 5v10" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </div>
+          <span style={{ fontWeight: 600, fontSize: 14, color: "var(--mac-text-primary)", letterSpacing: "-0.01em" }}>
+            Reimbursement
+          </span>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <Authenticated>
+            <Link
+              href="/admin"
+              className="mac-btn"
+              style={{ fontSize: 13 }}
+            >
+              Admin Panel
+            </Link>
+            <UserButton afterSignOutUrl="/" />
+          </Authenticated>
+          <Unauthenticated>
+            <SignInButton mode="modal">
+              <button className="mac-btn">Sign In</button>
+            </SignInButton>
+            <SignUpButton mode="modal">
+              <button className="mac-btn-primary">Get Started</button>
+            </SignUpButton>
+          </Unauthenticated>
+        </div>
+      </header>
+
+      {/* ── Hero ──────────────────────────────────────────── */}
+      <main style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 24px 60px" }}>
+        <div style={{ maxWidth: 680, width: "100%", textAlign: "center" }}>
+          {/* App badge */}
+          <div
+            className="mac-badge mac-badge-blue"
+            style={{ display: "inline-flex", marginBottom: 24, fontSize: 12 }}
+          >
+            ✦ Expense Management Platform
+          </div>
+
+          <h1
+            style={{
+              fontSize: "clamp(36px, 6vw, 58px)",
+              fontWeight: 700,
+              letterSpacing: "-0.03em",
+              lineHeight: 1.10,
+              color: "var(--mac-text-primary)",
+              marginBottom: 20,
+            }}
+          >
+            Streamline every{" "}
+            <span style={{ color: "var(--mac-accent)" }}>reimbursement</span>
+            {" "}request
+          </h1>
+
+          <p
+            style={{
+              fontSize: 17,
+              color: "var(--mac-text-secondary)",
+              lineHeight: 1.6,
+              marginBottom: 40,
+              maxWidth: 500,
+              margin: "0 auto 40px",
+            }}
+          >
+            Automated approval workflows, real-time tracking, and powerful admin controls — built for modern teams.
+          </p>
+
+          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+            <Authenticated>
+              <Link href="/admin">
+                <button className="mac-btn-primary" style={{ padding: "10px 24px", fontSize: 15 }}>
+                  Open Admin Panel →
+                </button>
+              </Link>
+            </Authenticated>
+            <Unauthenticated>
+              <SignUpButton mode="modal">
+                <button className="mac-btn-primary" style={{ padding: "10px 24px", fontSize: 15 }}>
+                  Get Started Free
+                </button>
+              </SignUpButton>
+              <SignInButton mode="modal">
+                <button className="mac-btn" style={{ padding: "10px 24px", fontSize: 15 }}>
+                  Sign In
+                </button>
+              </SignInButton>
+            </Unauthenticated>
           </div>
         </div>
-      </div>
-    </div>
-  );
-}
 
-function ResourceCard({
-  title,
-  description,
-  href,
-}: {
-  title: string;
-  description: string;
-  href: string;
-}) {
-  return (
-    <div className="flex flex-col gap-2 bg-slate-200 dark:bg-slate-800 p-4 rounded-md h-28 overflow-auto">
-      <a href={href} className="text-sm underline hover:no-underline">
-        {title}
-      </a>
-      <p className="text-xs">{description}</p>
+        {/* ── Feature cards ───────────────────────────────── */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+            gap: 16,
+            maxWidth: 800,
+            width: "100%",
+            marginTop: 72,
+          }}
+        >
+          {[
+            { icon: "🏢", title: "Organization Setup", desc: "Manage users, assign roles, and define reporting hierarchies." },
+            { icon: "✅", title: "Approval Policies", desc: "Create rule-based workflows with sequential or parallel approvals." },
+            { icon: "📊", title: "Expense Monitoring", desc: "Track, filter, and override expenses with admin-level control." },
+            { icon: "🔒", title: "Role-Based Access", desc: "Admin, Manager, and Employee tiers with secure data isolation." },
+          ].map((f) => (
+            <div key={f.title} className="mac-card" style={{ padding: 20, textAlign: "left" }}>
+              <div style={{ fontSize: 24, marginBottom: 10 }}>{f.icon}</div>
+              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6, color: "var(--mac-text-primary)" }}>{f.title}</div>
+              <div style={{ fontSize: 12, color: "var(--mac-text-secondary)", lineHeight: 1.55 }}>{f.desc}</div>
+            </div>
+          ))}
+        </div>
+      </main>
+
+      {/* ── Footer ─────────────────────────────────────────── */}
+      <footer style={{ borderTop: "1px solid var(--mac-border)", padding: "16px 24px", textAlign: "center" }}>
+        <span style={{ fontSize: 12, color: "var(--mac-text-tertiary)" }}>
+          © 2025 Reimbursement Management · Built with Convex & Next.js
+        </span>
+      </footer>
     </div>
   );
 }
