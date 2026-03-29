@@ -1,6 +1,7 @@
 # Reimbursement Management
 
-Reimbursement Management is being built as a Convex-first web application with a narrow Python OCR service.
+Reimbursement Management is being built as a Convex-first web application with a
+narrow Python OCR service.
 
 ## Architecture
 
@@ -8,13 +9,16 @@ Reimbursement Management is being built as a Convex-first web application with a
 
 - `Next.js` for the web app and route layer
 - `Clerk` for authentication
-- `Convex` for the primary backend, database, workflow logic, and realtime queries
+- `Convex` for the primary backend, database, workflow logic, and realtime
+  queries
 
 ### Supporting service
 
 - `FastAPI` for OCR and receipt-processing only
 
-Convex is the system of record for companies, users, expenses, approval rules, approvals, comments, notifications, and reporting views. The Python service should not own business entities or approval workflows.
+Convex is the system of record for companies, users, expenses, approval rules,
+approvals, comments, notifications, and reporting views. The Python service
+should not own business entities or approval workflows.
 
 ## Repository layout
 
@@ -37,14 +41,18 @@ PRD.md      Product requirements and product scope
 
 - One source of truth for business data and workflow state
 - Realtime UI updates without building custom sync layers
-- Python kept for the one area where it is likely to matter most: OCR and document processing
-- Lower operational complexity than running a general-purpose REST backend beside Convex
+- Python kept for the one area where it is likely to matter most: OCR and
+  document processing
+- Lower operational complexity than running a general-purpose REST backend
+  beside Convex
 
 ## Current status
 
-- `Frontend/` still contains starter Convex demo code and needs to be migrated to reimbursement-specific schema and screens.
+- `Frontend/` still contains starter Convex demo code and needs to be migrated
+  to reimbursement-specific schema and screens.
 - `Backend/` is now reserved for the OCR microservice scaffold.
-- Planning docs were originally written for `FastAPI + PostgreSQL`; they should now be interpreted through the Convex-first architecture described here.
+- Planning docs were originally written for `FastAPI + PostgreSQL`; they should
+  now be interpreted through the Convex-first architecture described here.
 
 ## Next implementation steps
 
@@ -53,3 +61,5 @@ PRD.md      Product requirements and product scope
 3. Add expense draft, receipt upload, and OCR review flows.
 4. Build approval rule management and approval inboxes in Convex.
 5. Expand the OCR service from scaffold to a real extraction pipeline.
+
+
