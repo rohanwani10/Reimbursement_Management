@@ -152,6 +152,18 @@ export async function resolveRuleAndApprovers(
     };
   }
 
+  if (resolvedRule.mode !== "sequential" || resolvedRule.conditionType !== "all") {
+    fail(
+      "INVALID_STATE",
+      "Matched rule uses unsupported semantics. Only sequential/all is executable.",
+      {
+        ruleId: resolvedRule._id,
+        mode: resolvedRule.mode,
+        conditionType: resolvedRule.conditionType,
+      },
+    );
+  }
+
   let approverIds = await getRuleApproverIds(ctx, input.companyId, resolvedRule._id);
 
   if (resolvedRule.includeManagerApprover) {

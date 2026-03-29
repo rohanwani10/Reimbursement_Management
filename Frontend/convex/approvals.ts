@@ -5,6 +5,7 @@ import type { MutationCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import { QUERY_HARD_LIMIT } from "./constants";
 import { requireAuth } from "./lib/auth";
+import { assertCanViewApprovalChain } from "./lib/access";
 import { logActivity } from "./lib/activity";
 import { enqueueNotification } from "./lib/notifications";
 import { assertOrFail, fail } from "./lib/errors";
@@ -90,12 +91,11 @@ export const listExpenseApprovals = query({
       .withIndex("by_expenseId_and_order", (q) => q.eq("expenseId", args.expenseId))
       .take(QUERY_HARD_LIMIT);
 
-    if (actor.user.role !== "admin" && expense.employeeId !== actor.user._id) {
-      const isApprover = steps.some((step) => step.approverId === actor.user._id);
-      if (!isApprover && actor.user.role !== "manager") {
-        fail("FORBIDDEN", "You are not allowed to view this approval chain.");
-      }
-    }
+    assertCanViewApprovalChain({
+      actorRole: actor.user.role,
+      isExpenseOwner: expense.employeeId === actor.user._id,
+      isApprover: steps.some((step) => step.approverId === actor.user._id),
+    });
 
     return steps.sort((a, b) => a.order - b.order);
   },
