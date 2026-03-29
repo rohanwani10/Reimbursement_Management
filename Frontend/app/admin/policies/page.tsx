@@ -7,12 +7,8 @@ import { Id } from "@/convex/_generated/dataModel";
 
 export default function ApprovalPoliciesSetup() {
   const currentUser = useQuery(api.auth.current);
-  const users = useQuery(api.users.getUsers,
-    currentUser ? { company_id: currentUser.company_id } : "skip"
-  );
-  const rules = useQuery(api.rules.getRules,
-    currentUser ? { company_id: currentUser.company_id } : "skip"
-  );
+  const users = useQuery(api.users.getUsers, currentUser ? {} : "skip");
+  const rules = useQuery(api.rules.getRules, currentUser ? {} : "skip");
 
   const createRule = useMutation(api.rules.createRule);
   const updateRule = useMutation(api.rules.updateRule);
@@ -41,6 +37,8 @@ export default function ApprovalPoliciesSetup() {
     );
   }
 
+  type RuleRow = (typeof rules)[number];
+
   const resetForm = () => {
     setIsAdding(false); setEditingRuleId(null); setName(""); setCategory("");
     setAmountThreshold(""); setPriority("1"); setLogicType("all");
@@ -54,7 +52,6 @@ export default function ApprovalPoliciesSetup() {
     }
     try {
       const payload = {
-        company_id:          currentUser.company_id,
         name, priority:      parseInt(priority, 10),
         logic_type:          logicType,
         manager_injection:   managerInjection,
@@ -73,13 +70,13 @@ export default function ApprovalPoliciesSetup() {
     } catch { alert("Failed to save rule"); }
   };
 
-  const handleEdit = (rule: any) => {
+  const handleEdit = (rule: RuleRow) => {
     setEditingRuleId(rule._id); setName(rule.name); setCategory(rule.category || "");
     setAmountThreshold(rule.amount_threshold?.toString() ?? ""); setPriority(rule.priority.toString());
     setLogicType(rule.logic_type); setManagerInjection(rule.manager_injection);
     setApprovalMode(rule.approval_mode); setMinPercentage(rule.min_percentage?.toString() ?? "");
     setSpecificApproverId(rule.specific_approver_id || "");
-    setApproversList(rule.approvers.map((a: any) => ({ user_id: a.user_id, required: a.required })));
+    setApproversList(rule.approvers.map((a) => ({ user_id: a.user_id, required: a.required })));
     setIsAdding(true);
   };
 
@@ -165,7 +162,7 @@ export default function ApprovalPoliciesSetup() {
                 />
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 500, color: "var(--mac-text-primary)" }}>Manager Injection</div>
-                  <div style={{ fontSize: 11, color: "var(--mac-text-tertiary)" }}>Submitter's manager added automatically</div>
+                  <div style={{ fontSize: 11, color: "var(--mac-text-tertiary)" }}>Submitter&apos;s manager added automatically</div>
                 </div>
               </label>
 
@@ -186,7 +183,15 @@ export default function ApprovalPoliciesSetup() {
               {/* Condition logic */}
               <div>
                 <label className="mac-label">Condition Logic</label>
-                <select className="mac-select" value={logicType} onChange={e => setLogicType(e.target.value as any)}>
+                <select
+                  className="mac-select"
+                  value={logicType}
+                  onChange={e =>
+                    setLogicType(
+                      e.target.value as "all" | "percentage" | "specific" | "hybrid"
+                    )
+                  }
+                >
                   <option value="all">ALL — everyone must approve</option>
                   <option value="percentage">PERCENTAGE — min % required</option>
                   <option value="specific">SPECIFIC — one key approver</option>

@@ -5,17 +5,11 @@ import { api } from "@/convex/_generated/api";
 import { useState } from "react";
 import { Id } from "@/convex/_generated/dataModel";
 
-const roleColors: Record<string, string> = {
-  admin:    "mac-badge mac-badge-blue",
-  manager:  "mac-badge mac-badge-yellow",
-  employee: "mac-badge mac-badge-grey",
-};
-
 export default function OrganizationSetup() {
   const currentUser = useQuery(api.auth.current);
   const users = useQuery(
     api.users.getUsers,
-    currentUser ? { company_id: currentUser.company_id } : "skip"
+    currentUser ? {} : "skip"
   );
 
   const updateUser  = useMutation(api.users.updateUser);
@@ -42,7 +36,6 @@ export default function OrganizationSetup() {
     if (!newName || !newEmail) return;
     try {
       await createUser({
-        company_id: currentUser.company_id,
         name: newName,
         email: newEmail,
         role: newRole,
@@ -85,7 +78,13 @@ export default function OrganizationSetup() {
             </div>
             <div>
               <label className="mac-label">Role</label>
-              <select className="mac-select" value={newRole} onChange={e => setNewRole(e.target.value as any)}>
+              <select
+                className="mac-select"
+                value={newRole}
+                onChange={e =>
+                  setNewRole(e.target.value as "admin" | "manager" | "employee")
+                }
+              >
                 <option value="employee">Employee</option>
                 <option value="manager">Manager</option>
                 <option value="admin">Admin</option>
@@ -121,12 +120,11 @@ export default function OrganizationSetup() {
             {users.length === 0 && (
               <tr>
                 <td colSpan={4} style={{ textAlign: "center", color: "var(--mac-text-secondary)", padding: "40px 0" }}>
-                  No users found. Use "Add User" to get started.
+                  No users found. Use &quot;Add User&quot; to get started.
                 </td>
               </tr>
             )}
             {users.map((user) => {
-              const manager = users.find(u => u._id === user.manager_id);
               return (
                 <tr key={user._id}>
                   <td>
@@ -156,7 +154,7 @@ export default function OrganizationSetup() {
                   <td>
                     <select
                       value={user.role}
-                      onChange={e => updateUser({ user_id: user._id, role: e.target.value as any })}
+                      onChange={e => updateUser({ user_id: user._id, role: e.target.value as "admin" | "manager" | "employee" })}
                       style={{
                         background: "transparent",
                         border: "none",
@@ -176,7 +174,14 @@ export default function OrganizationSetup() {
                   <td>
                     <select
                       value={user.manager_id || ""}
-                      onChange={e => updateUser({ user_id: user._id, manager_id: e.target.value ? e.target.value as Id<"users"> : undefined })}
+                      onChange={e => {
+                        const managerId = e.target.value;
+                        if (managerId) {
+                          void updateUser({ user_id: user._id, manager_id: managerId as Id<"users"> });
+                        } else {
+                          void updateUser({ user_id: user._id, clear_manager: true });
+                        }
+                      }}
                       style={{
                         background: "transparent",
                         border: "none",

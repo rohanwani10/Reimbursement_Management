@@ -68,3 +68,22 @@ htmlcov/
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# Uploads and temp files
+uploads/
+temp/
+tmp/
+*.tmp
+
+# Python cache
+.ruff_cache/
+.mypy_cache/
+.tox/
+
+# Convex
+.convex/
+
+
+#backup folders
+app(2)/
+convex(2)/

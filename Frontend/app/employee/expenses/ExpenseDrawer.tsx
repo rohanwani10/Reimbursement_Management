@@ -3,20 +3,29 @@ import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
+type DrawerOcrData = {
+  receipt_url: string;
+  extracted: {
+    description?: string;
+    category?: string;
+    amount?: number;
+    currency?: string;
+    expense_date?: string;
+  };
+  raw: unknown;
+  confidence: number;
+};
+
 type ExpenseDrawerProps = {
   isOpen: boolean;
   onClose: () => void;
   expenseId: Id<"expenses"> | null;
-  ocrData: any | null;
-  companyId: Id<"companies">;
-  userId: Id<"users">;
+  ocrData: DrawerOcrData | null;
 };
 
-export function ExpenseDrawer({ isOpen, onClose, expenseId, ocrData, companyId, userId }: ExpenseDrawerProps) {
-  const isEditingExisting = !!expenseId;
-  
+export function ExpenseDrawer({ isOpen, onClose, expenseId, ocrData }: ExpenseDrawerProps) {
   // Use a query to fetch the specific expense if we are viewing one
-  const myExpenses = useQuery(api.expenses.getMyExpenses, { company_id: companyId, user_id: userId }) || [];
+  const myExpenses = useQuery(api.expenses.getMyExpenses, {}) || [];
   const existingExpense = myExpenses.find(e => e._id === expenseId);
 
   const [description, setDescription] = useState("");
@@ -33,6 +42,17 @@ export function ExpenseDrawer({ isOpen, onClose, expenseId, ocrData, companyId, 
   const submitDraft = useMutation(api.expenses.submitDraftExpense);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const normalizedOcrData =
+    ocrData &&
+    typeof ocrData.confidence === "number" &&
+    ocrData.extracted !== undefined
+      ? {
+          extracted: ocrData.extracted,
+          raw: ocrData.raw,
+          confidence: ocrData.confidence,
+        }
+      : undefined;
 
   // Sync data when the drawer opens
   useEffect(() => {
@@ -84,8 +104,6 @@ export function ExpenseDrawer({ isOpen, onClose, expenseId, ocrData, companyId, 
         });
       } else {
         await createDraft({
-          company_id: companyId,
-          user_id: userId,
           description,
           category,
           amount: Number(amount),
@@ -94,7 +112,7 @@ export function ExpenseDrawer({ isOpen, onClose, expenseId, ocrData, companyId, 
           paid_by: paidBy,
           remarks,
           receipt_url: receiptUrl ?? undefined,
-          ocr_data: ocrData ?? undefined
+          ocr_data: normalizedOcrData,
         });
       }
       onClose();
@@ -113,8 +131,6 @@ export function ExpenseDrawer({ isOpen, onClose, expenseId, ocrData, companyId, 
       if (!submitId) {
         // Need to create draft first before submitting
         submitId = await createDraft({
-          company_id: companyId,
-          user_id: userId,
           description,
           category,
           amount: Number(amount),
@@ -123,7 +139,7 @@ export function ExpenseDrawer({ isOpen, onClose, expenseId, ocrData, companyId, 
           paid_by: paidBy,
           remarks,
           receipt_url: receiptUrl ?? undefined,
-          ocr_data: ocrData ?? undefined
+          ocr_data: normalizedOcrData,
         });
       } else {
         // Ensure latest changes to draft are updated
@@ -132,7 +148,7 @@ export function ExpenseDrawer({ isOpen, onClose, expenseId, ocrData, companyId, 
           updates: { description, category, amount: Number(amount), currency, expense_date: expenseDate, paid_by: paidBy, remarks, receipt_url: receiptUrl ?? undefined }
         });
       }
-      await submitDraft({ expense_id: submitId, user_id: userId });
+      await submitDraft({ expense_id: submitId });
       onClose();
     } catch (e) {
       console.error(e);
@@ -246,7 +262,7 @@ export function ExpenseDrawer({ isOpen, onClose, expenseId, ocrData, companyId, 
               <h4 style={{ fontSize: 13, fontWeight: 600, color: 'var(--mac-text-primary)', marginBottom: 12 }}>Approval Status</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {existingExpense.approvers && existingExpense.approvers.length > 0 ? (
-                  existingExpense.approvers.map((app: any, idx: number) => (
+                  existingExpense.approvers.map((app, idx: number) => (
                     <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'var(--mac-bg)', borderRadius: 6, border: '1px solid var(--mac-border)' }}>
                       <span style={{ fontSize: 13, color: 'var(--mac-text-primary)' }}>{app.name || "Unknown"}</span>
                       <span className={`mac-badge mac-badge-${app.status === 'pending' ? 'yellow' : app.status === 'approved' ? 'green' : app.status === 'rejected' ? 'red' : 'grey'}`}>

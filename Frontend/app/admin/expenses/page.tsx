@@ -23,10 +23,7 @@ function StatusBadge({ status }: { status: string }) {
 
 export default function ExpensesMonitoring() {
   const currentUser = useQuery(api.auth.current);
-  const expenses    = useQuery(
-    api.expenses.getAllExpenses,
-    currentUser ? { company_id: currentUser.company_id } : "skip"
-  );
+  const expenses = useQuery(api.expenses.getAllExpenses, currentUser ? {} : "skip");
   const overrideExpense = useMutation(api.expenses.overrideExpense);
 
   const [filterStatus, setFilterStatus] = useState("all");
@@ -45,7 +42,11 @@ export default function ExpensesMonitoring() {
     const reason = window.prompt(`Enter reason for ${status} override:`);
     if (reason === null) return;
     try {
-      await overrideExpense({ expense_id: expenseId as Id<"expenses">, status, admin_id: currentUser._id, comments: reason });
+      await overrideExpense({
+        expense_id: expenseId as Id<"expenses">,
+        status,
+        comments: reason,
+      });
     } catch { alert("Failed to override expense."); }
   };
 
@@ -144,7 +145,13 @@ export default function ExpensesMonitoring() {
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <StatusBadge status={expense.status} />
                   <span style={{ fontSize: 11, color: "var(--mac-text-tertiary)" }}>
-                    {new Date(expense.submitted_at || Date.now()).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    {expense.submitted_at
+                      ? new Date(expense.submitted_at).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })
+                      : "Not submitted"}
                   </span>
                 </div>
 

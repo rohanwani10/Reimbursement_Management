@@ -9,12 +9,23 @@ import { Upload, Plus, FileText, Clock, CheckCircle, Trash2 } from "lucide-react
 
 type FilterMode = "all" | "draft" | "pending" | "approved";
 
+type OcrResult = {
+  success: boolean;
+  receipt_url: string;
+  extracted: {
+    amount?: number;
+    currency?: string;
+    category?: string;
+    expense_date?: string;
+    description?: string;
+  };
+  raw: unknown;
+  confidence: number;
+};
+
 export default function EmployeeDashboard() {
   const currentUser = useQuery(api.auth.current);
-  const myExpenses = useQuery(
-    api.expenses.getMyExpenses,
-    currentUser ? { company_id: currentUser.company_id, user_id: currentUser._id } : "skip"
-  ) || [];
+  const myExpenses = useQuery(api.expenses.getMyExpenses, currentUser ? {} : "skip") || [];
 
   const deleteDraft = useMutation(api.expenses.deleteDraftExpense);
   const generateUploadUrl = useMutation(api.ocr.generateUploadUrl);
@@ -23,7 +34,7 @@ export default function EmployeeDashboard() {
   const [filter, setFilter] = useState<FilterMode>("all");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedExpenseId, setSelectedExpenseId] = useState<Id<"expenses"> | null>(null);
-  const [ocrData, setOcrData] = useState<any>(null);
+  const [ocrData, setOcrData] = useState<OcrResult | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -259,8 +270,6 @@ export default function EmployeeDashboard() {
         onClose={() => setIsDrawerOpen(false)} 
         expenseId={selectedExpenseId} 
         ocrData={ocrData}
-        companyId={currentUser.company_id}
-        userId={currentUser._id}
       />
     </div>
   );
