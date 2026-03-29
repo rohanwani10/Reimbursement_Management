@@ -6,41 +6,35 @@ import { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
-const navItems = [
-  {
-    href: "/admin",
-    label: "Organization",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
-        <path d="M3 6h14M3 10h14M3 14h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-  {
-    href: "/admin/policies",
-    label: "Approval Policies",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
-        <path d="M9 12l2 2 4-4M5 5h10a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-  },
-  {
-    href: "/admin/expenses",
-    label: "Expenses",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
-        <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.5" />
-        <path d="M10 6v8M7.5 8.5c0-1.1.9-1.5 2.5-1.5s2.5.7 2.5 1.5-.9 1.5-2.5 1.5S7.5 10.6 7.5 11.5 8.4 13 10 13s2.5-.4 2.5-1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-      </svg>
-    ),
-  },
-];
-
-export default function AdminLayout({ children }: { children: ReactNode }) {
+export default function EmployeeLayout({ children }: { children: ReactNode }) {
   const user = useQuery(api.auth.current);
   const pathname = usePathname();
+
+  const navItems = [
+    {
+      href: "/employee/expenses",
+      label: "My Expenses",
+      icon: (
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+          <path d="M4 6h12M4 10h12M4 14h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      ),
+    },
+  ];
+
+  if (user?.role === "admin") {
+    navItems.push({
+      href: "/admin",
+      label: "Admin Panel",
+      icon: (
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+           <path d="M3 6h14M3 10h14M3 14h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      ),
+    });
+  }
 
   /* ── Loading ── */
   if (user === undefined) {
@@ -65,15 +59,15 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               animation: "spin 0.8s linear infinite",
             }}
           />
-          <p style={{ fontSize: 13, color: "var(--mac-text-secondary)" }}>Loading admin dashboard…</p>
+          <p style={{ fontSize: 13, color: "var(--mac-text-secondary)" }}>Loading employee workspace…</p>
         </div>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
 
-  /* ── Access denied ── */
-  if (user === null || user.role !== "admin") {
+  /* ── Access denied or not onboarded ── */
+  if (user === null) {
     return (
       <div
         style={{
@@ -85,31 +79,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           padding: 24,
         }}
       >
-        <div
-          className="mac-card mac-fade-in"
-          style={{ maxWidth: 400, width: "100%", padding: 40, textAlign: "center" }}
-        >
-          <div
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: "50%",
-              background: "var(--mac-red-bg)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto 20px",
-            }}
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--mac-red)" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3m0 3h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-            </svg>
-          </div>
+        <div className="mac-card mac-fade-in" style={{ maxWidth: 400, width: "100%", padding: 40, textAlign: "center" }}>
           <h1 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, color: "var(--mac-text-primary)" }}>
             Access Denied
           </h1>
           <p style={{ fontSize: 13, color: "var(--mac-text-secondary)", marginBottom: 28, lineHeight: 1.6 }}>
-            You don&apos;t have administrative privileges to access this area.
+            You do not have access to this portal or your account has not been set up.
           </p>
           <Link href="/">
             <button className="mac-btn-primary" style={{ width: "100%", justifyContent: "center" }}>
@@ -121,7 +96,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     );
   }
 
-  /* ── Admin Shell ── */
+  /* ── Employee Shell ── */
   return (
     <div style={{ minHeight: "100vh", background: "var(--mac-bg)", display: "flex", flexDirection: "column" }}>
       {/* Title Bar */}
@@ -158,15 +133,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               justifyContent: "center",
             }}
           >
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-              <rect x="2" y="2" width="5" height="5" rx="1" fill="white" />
-              <rect x="9" y="2" width="5" height="5" rx="1" fill="white" />
-              <rect x="2" y="9" width="5" height="5" rx="1" fill="white" />
-              <rect x="9" y="9" width="5" height="5" rx="1" fill="white" />
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+               <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
             </svg>
           </div>
           <span style={{ fontWeight: 600, fontSize: 14, letterSpacing: "-0.01em", color: "var(--mac-text-primary)" }}>
-            Admin Panel
+            Employee Portal
           </span>
         </div>
 
@@ -201,8 +173,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
         {/* Right: user */}
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ fontSize: 12, color: "var(--mac-text-secondary)" }}>{user.name}</span>
-          <UserButton afterSignOutUrl="/" />
+          <ThemeToggle />
+          <span style={{ fontSize: 12, color: "var(--mac-text-secondary)", fontWeight: 500 }}>{user.name}</span>
+          <div style={{ pointerEvents: 'auto', display: 'flex' }}>
+            <UserButton afterSignOutUrl="/" />
+          </div>
         </div>
       </header>
 

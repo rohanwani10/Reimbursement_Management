@@ -48,6 +48,10 @@ export default defineSchema({
     amount: v.number(),
     currency: v.string(),
     category: v.string(),
+    description: v.optional(v.string()),
+    expense_date: v.optional(v.string()),
+    paid_by: v.optional(v.string()),
+    remarks: v.optional(v.string()),
     status: v.union(
       v.literal("draft"),
       v.literal("pending"),

@@ -12,6 +12,7 @@ import type * as auth from "../auth.js";
 import type * as companies from "../companies.js";
 import type * as expenses from "../expenses.js";
 import type * as myFunctions from "../myFunctions.js";
+import type * as ocr from "../ocr.js";
 import type * as rules from "../rules.js";
 import type * as users from "../users.js";
 
@@ -26,6 +27,7 @@ declare const fullApi: ApiFromModules<{
   companies: typeof companies;
   expenses: typeof expenses;
   myFunctions: typeof myFunctions;
+  ocr: typeof ocr;
   rules: typeof rules;
   users: typeof users;
 }>;

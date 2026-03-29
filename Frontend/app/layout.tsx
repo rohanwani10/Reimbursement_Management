@@ -4,6 +4,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import ConvexClientProvider from "@/components/ConvexClientProvider";
 import { ClerkProvider } from "@clerk/nextjs";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import { SyncUser } from "@/components/SyncUser";
 
 const inter = Inter({
@@ -37,9 +38,11 @@ export default function RootLayout({
         style={{ fontFamily: "var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}
       >
         <ClerkProvider dynamic>
-          <ConvexClientProvider>{children}
-            <SyncUser />
-          </ConvexClientProvider>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+            <ConvexClientProvider>{children}
+              <SyncUser />
+            </ConvexClientProvider>
+          </ThemeProvider>
         </ClerkProvider>
       </body>
     </html>

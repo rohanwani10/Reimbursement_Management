@@ -1,10 +1,13 @@
 "use client";
 
-import { Authenticated, Unauthenticated } from "convex/react";
+import { Authenticated, Unauthenticated, useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import Link from "next/link";
 import { SignUpButton, SignInButton, UserButton } from "@clerk/nextjs";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function Home() {
+  const user = useQuery(api.auth.current);
   return (
     <div
       className="mac-fade-in"
@@ -53,15 +56,19 @@ export default function Home() {
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <ThemeToggle />
           <Authenticated>
-            <Link
-              href="/admin"
-              className="mac-btn"
-              style={{ fontSize: 13 }}
-            >
-              Admin Panel
-            </Link>
-            <UserButton afterSignOutUrl="/" />
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {user?.role === "admin" && (
+                <Link href="/admin" className="mac-btn" style={{ fontSize: 13 }}>
+                  Admin Panel
+                </Link>
+              )}
+              <Link href="/employee/expenses" className="mac-btn" style={{ fontSize: 13 }}>
+                My Expenses
+              </Link>
+              <UserButton afterSignOutUrl="/" />
+            </div>
           </Authenticated>
           <Unauthenticated>
             <SignInButton mode="modal">
@@ -115,11 +122,19 @@ export default function Home() {
 
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
             <Authenticated>
-              <Link href="/admin">
-                <button className="mac-btn-primary" style={{ padding: "10px 24px", fontSize: 15 }}>
-                  Open Admin Panel →
-                </button>
-              </Link>
+              {user?.role === "admin" ? (
+                <Link href="/admin">
+                  <button className="mac-btn-primary" style={{ padding: "10px 24px", fontSize: 15 }}>
+                    Open Admin Panel →
+                  </button>
+                </Link>
+              ) : (
+                <Link href="/employee/expenses">
+                  <button className="mac-btn-primary" style={{ padding: "10px 24px", fontSize: 15 }}>
+                    Open My Dashboard →
+                  </button>
+                </Link>
+              )}
             </Authenticated>
             <Unauthenticated>
               <SignUpButton mode="modal">
