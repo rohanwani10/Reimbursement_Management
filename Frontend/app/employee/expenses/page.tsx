@@ -24,6 +24,29 @@ type OcrResult = {
   error_message?: string;
 };
 
+function resolveMimeType(file: File): string | undefined {
+  const reported = file.type?.trim().toLowerCase();
+  if (reported) {
+    return reported;
+  }
+
+  const name = file.name.toLowerCase();
+  if (name.endsWith(".pdf")) {
+    return "application/pdf";
+  }
+  if (name.endsWith(".png")) {
+    return "image/png";
+  }
+  if (name.endsWith(".jpg") || name.endsWith(".jpeg")) {
+    return "image/jpeg";
+  }
+  if (name.endsWith(".webp")) {
+    return "image/webp";
+  }
+
+  return undefined;
+}
+
 export default function EmployeeDashboard() {
   const currentUser = useQuery(api.auth.current);
   const myExpenses = useQuery(api.expenses.getMyExpenses, currentUser ? {} : "skip") || [];
@@ -85,6 +108,13 @@ export default function EmployeeDashboard() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const mimeType = resolveMimeType(file);
+    if (!mimeType) {
+      alert("Unsupported file type. Please upload PDF, PNG, JPG, or WEBP receipts.");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
     setIsUploading(true);
     try {
       // 1. Get Upload URL
@@ -98,7 +128,7 @@ export default function EmployeeDashboard() {
       const { storageId } = await result.json();
 
       // 3. Process via OCR Action
-      const extraction = await processReceipt({ storageId });
+      const extraction = await processReceipt({ storageId, mimeType });
       
       if (extraction.success) {
         setOcrData(extraction);
