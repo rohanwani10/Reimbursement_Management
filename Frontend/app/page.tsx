@@ -59,6 +59,11 @@ export default function Home() {
           <ThemeToggle />
           <Authenticated>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {user?.role === "manager" && (
+                <Link href="/manager" className="mac-btn" style={{ fontSize: 13 }}>
+                  Manager Workspace
+                </Link>
+              )}
               {user?.role === "admin" && (
                 <Link href="/admin" className="mac-btn" style={{ fontSize: 13 }}>
                   Admin Panel
@@ -126,6 +131,12 @@ export default function Home() {
                 <Link href="/admin">
                   <button className="mac-btn-primary" style={{ padding: "10px 24px", fontSize: 15 }}>
                     Open Admin Panel →
+                  </button>
+                </Link>
+              ) : user?.role === "manager" ? (
+                <Link href="/manager">
+                  <button className="mac-btn-primary" style={{ padding: "10px 24px", fontSize: 15 }}>
+                    Open Manager Workspace →
                   </button>
                 </Link>
               ) : (

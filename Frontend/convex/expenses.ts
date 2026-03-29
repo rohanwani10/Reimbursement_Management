@@ -355,6 +355,65 @@ export const getAllExpenses = query({
   },
 });
 
+export const getManagerTeamExpenses = query({
+  args: {},
+  handler: async (ctx) => {
+    const actor = await requireActor(ctx);
+
+    if (actor.role === "employee") {
+      fail("FORBIDDEN", "Only managers or administrators can view team expenses.");
+    }
+
+    const companyUsers = await ctx.db
+      .query("users")
+      .withIndex("by_company", (q) => q.eq("company_id", actor.company_id))
+      .collect();
+
+    const visibleUserIds =
+      actor.role === "admin"
+        ? new Set(companyUsers.map((user) => String(user._id)))
+        : new Set(
+            companyUsers
+              .filter((user) => user.manager_id === actor._id || user._id === actor._id)
+              .map((user) => String(user._id))
+          );
+
+    const expenses = await ctx.db
+      .query("expenses")
+      .withIndex("by_company", (q) => q.eq("company_id", actor.company_id))
+      .order("desc")
+      .collect();
+
+    const visibleExpenses = expenses.filter((expense) =>
+      visibleUserIds.has(String(expense.user_id))
+    );
+
+    const userNameById = new Map(companyUsers.map((user) => [String(user._id), user.name]));
+
+    return await Promise.all(
+      visibleExpenses.map(async (expense) => {
+        const approvals = await ctx.db
+          .query("expense_approvals")
+          .withIndex("by_expense", (q) => q.eq("expense_id", expense._id))
+          .collect();
+
+        const approvers = approvals
+          .map((approval) => ({
+            ...approval,
+            name: userNameById.get(String(approval.user_id)),
+          }))
+          .sort((a, b) => a.step_order - b.step_order);
+
+        return {
+          ...expense,
+          submitter_name: userNameById.get(String(expense.user_id)),
+          approvers,
+        };
+      })
+    );
+  },
+});
+
 export const overrideExpense = mutation({
   args: {
     expense_id: v.id("expenses"),

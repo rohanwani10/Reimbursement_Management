@@ -8,11 +8,31 @@ import { usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
-export default function EmployeeLayout({ children }: { children: ReactNode }) {
+export default function ManagerLayout({ children }: { children: ReactNode }) {
   const user = useQuery(api.auth.current);
   const pathname = usePathname();
 
   const navItems = [
+    {
+      href: "/manager",
+      label: "Approval Queue",
+      icon: (
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+          <path d="M4 6h12M4 10h12M4 14h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      ),
+    },
+    {
+      href: "/manager/team-expenses",
+      label: "Team Expenses",
+      icon: (
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+          <circle cx="7" cy="7" r="2.5" stroke="currentColor" strokeWidth="1.5" />
+          <circle cx="13" cy="7" r="2.5" stroke="currentColor" strokeWidth="1.5" />
+          <path d="M3.5 15c.8-2.1 2.4-3 3.5-3s2.7.9 3.5 3M9.5 15c.8-2.1 2.4-3 3.5-3s2.7.9 3.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      ),
+    },
     {
       href: "/employee/expenses",
       label: "My Expenses",
@@ -24,33 +44,18 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
     },
   ];
 
-  if (user?.role === "manager") {
-    navItems.push({
-      href: "/manager",
-      label: "Manager Workspace",
-      icon: (
-        <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
-          <circle cx="7" cy="7" r="2.5" stroke="currentColor" strokeWidth="1.5" />
-          <circle cx="13" cy="7" r="2.5" stroke="currentColor" strokeWidth="1.5" />
-          <path d="M3.5 15c.8-2.1 2.4-3 3.5-3s2.7.9 3.5 3M9.5 15c.8-2.1 2.4-3 3.5-3s2.7.9 3.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
-      ),
-    });
-  }
-
   if (user?.role === "admin") {
     navItems.push({
       href: "/admin",
-      label: "Admin Panel",
+      label: "Admin",
       icon: (
         <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
-           <path d="M3 6h14M3 10h14M3 14h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          <path d="M3 6h14M3 10h14M3 14h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
         </svg>
       ),
     });
   }
 
-  /* ── Loading ── */
   if (user === undefined) {
     return (
       <div
@@ -73,15 +78,14 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
               animation: "spin 0.8s linear infinite",
             }}
           />
-          <p style={{ fontSize: 13, color: "var(--mac-text-secondary)" }}>Loading employee workspace…</p>
+          <p style={{ fontSize: 13, color: "var(--mac-text-secondary)" }}>Loading manager workspace…</p>
         </div>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
 
-  /* ── Access denied or not onboarded ── */
-  if (user === null) {
+  if (user === null || (user.role !== "manager" && user.role !== "admin")) {
     return (
       <div
         style={{
@@ -93,12 +97,12 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
           padding: 24,
         }}
       >
-        <div className="mac-card mac-fade-in" style={{ maxWidth: 400, width: "100%", padding: 40, textAlign: "center" }}>
+        <div className="mac-card mac-fade-in" style={{ maxWidth: 420, width: "100%", padding: 40, textAlign: "center" }}>
           <h1 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, color: "var(--mac-text-primary)" }}>
             Access Denied
           </h1>
           <p style={{ fontSize: 13, color: "var(--mac-text-secondary)", marginBottom: 28, lineHeight: 1.6 }}>
-            You do not have access to this portal or your account has not been set up.
+            You do not have manager access for this workspace.
           </p>
           <Link href="/">
             <button className="mac-btn-primary" style={{ width: "100%", justifyContent: "center" }}>
@@ -110,10 +114,8 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
     );
   }
 
-  /* ── Employee Shell ── */
   return (
     <div style={{ minHeight: "100vh", background: "var(--mac-bg)", display: "flex", flexDirection: "column" }}>
-      {/* Title Bar */}
       <header
         className="mac-glass"
         style={{
@@ -129,7 +131,6 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
           flexShrink: 0,
         }}
       >
-        {/* Left: traffic lights + brand */}
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ display: "flex", gap: 6 }}>
             <span style={{ width: 12, height: 12, borderRadius: "50%", background: "#ff5f57", display: "block" }} />
@@ -147,16 +148,15 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
               justifyContent: "center",
             }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
-               <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 10-8 0v4M7 11h10v9H7z" />
             </svg>
           </div>
           <span style={{ fontWeight: 600, fontSize: 14, letterSpacing: "-0.01em", color: "var(--mac-text-primary)" }}>
-            Employee Portal
+            Manager Workspace
           </span>
         </div>
 
-        {/* Center: Nav */}
         <nav style={{ display: "flex", alignItems: "center", gap: 2 }}>
           {navItems.map((item) => {
             const active = pathname === item.href;
@@ -185,21 +185,14 @@ export default function EmployeeLayout({ children }: { children: ReactNode }) {
           })}
         </nav>
 
-        {/* Right: user */}
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <ThemeToggle />
           <span style={{ fontSize: 12, color: "var(--mac-text-secondary)", fontWeight: 500 }}>{user.name}</span>
-          <div style={{ pointerEvents: 'auto', display: 'flex' }}>
-            <UserButton afterSignOutUrl="/" />
-          </div>
+          <UserButton afterSignOutUrl="/" />
         </div>
       </header>
 
-      {/* Content */}
-      <main
-        className="mac-fade-in"
-        style={{ flex: 1, padding: "28px 28px", maxWidth: 1200, width: "100%", margin: "0 auto" }}
-      >
+      <main className="mac-fade-in" style={{ flex: 1, padding: "28px 28px", maxWidth: 1200, width: "100%", margin: "0 auto" }}>
         {children}
       </main>
     </div>

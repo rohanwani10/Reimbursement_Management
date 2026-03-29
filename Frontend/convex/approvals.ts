@@ -60,6 +60,19 @@ async function getAllSteps(ctx: AnyCtx, expenseId: Id<"expenses">) {
   return steps.sort((a, b) => a.step_order - b.step_order);
 }
 
+function approvalStatusLabel(status: Doc<"expense_approvals">["status"]) {
+  if (status === "approved") {
+    return "Approved";
+  }
+  if (status === "rejected") {
+    return "Rejected";
+  }
+  if (status === "skipped") {
+    return "Skipped";
+  }
+  return "Pending";
+}
+
 export function getCurrentPendingOrder(
   steps: Array<Doc<"expense_approvals">>
 ): number | null {
@@ -130,6 +143,74 @@ export const listExpenseApprovals = query({
         approver_name: userNameById.get(String(step.user_id)),
       })),
     };
+  },
+});
+
+export const listMyApprovalQueue = query({
+  args: {},
+  handler: async (ctx) => {
+    const actor = await requireActor(ctx);
+
+    if (actor.role === "employee") {
+      fail("FORBIDDEN", "Only managers or administrators can access approval queues.");
+    }
+
+    const [mySteps, companyUsers] = await Promise.all([
+      ctx.db
+        .query("expense_approvals")
+        .filter((q) => q.eq(q.field("user_id"), actor._id))
+        .collect(),
+      ctx.db
+        .query("users")
+        .withIndex("by_company", (q) => q.eq("company_id", actor.company_id))
+        .collect(),
+    ]);
+
+    const userNameById = new Map(companyUsers.map((user) => [String(user._id), user.name]));
+
+    const queue = await Promise.all(
+      mySteps.map(async (step) => {
+        const expense = await ctx.db.get(step.expense_id);
+        if (!expense || expense.company_id !== actor.company_id) {
+          return null;
+        }
+
+        const allSteps = await getAllSteps(ctx, expense._id);
+        const currentPendingOrder = getCurrentPendingOrder(allSteps);
+
+        const isActionable =
+          expense.status === "pending" &&
+          step.status === "pending" &&
+          currentPendingOrder !== null &&
+          step.step_order === currentPendingOrder;
+
+        return {
+          expense_id: expense._id,
+          amount: expense.amount,
+          currency: expense.currency,
+          category: expense.category,
+          description: expense.description,
+          submitted_at: expense.submitted_at,
+          submitter_id: expense.user_id,
+          submitter_name: userNameById.get(String(expense.user_id)) ?? "Unknown",
+          step_id: step._id,
+          step_order: step.step_order,
+          step_status: step.status,
+          step_status_label: approvalStatusLabel(step.status),
+          step_comments: step.comments,
+          current_pending_order: currentPendingOrder,
+          is_actionable: isActionable,
+        };
+      })
+    );
+
+    return queue
+      .filter((item): item is NonNullable<typeof item> => item !== null)
+      .sort((a, b) => {
+        const aSubmitted = a.submitted_at ?? 0;
+        const bSubmitted = b.submitted_at ?? 0;
+        return bSubmitted - aSubmitted;
+      });
   },
 });
 
